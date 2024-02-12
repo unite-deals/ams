@@ -7,7 +7,7 @@ import pandas as pd
 import joblib
 import cv2
 
-# Defining Streamlit App
+# Streamlit app layout
 st.set_page_config(page_title="Attendance System", page_icon="✅")
 
 # Saving Date today in 2 different formats
@@ -107,16 +107,12 @@ elif selected_page == "Take Attendance":
     picture = st.camera_input("Take a picture")
 
     if picture:
-        # Display the captured picture
-        np_image = np.array(picture)
-
-        # Display the captured picture
-        st.image(np_image, caption="Captured Image", use_column_width=True)
-        #st.image(np.array(picture), channels="BGR", caption="Captured Image", use_column_width=True)
-
         # Convert the picture to OpenCV format
         np_image = np.array(picture)
         frame = cv2.cvtColor(np_image, cv2.COLOR_BGR2RGB)
+
+        # Display the captured picture
+        st.image(frame, caption="Captured Image", channels="RGB", use_column_width=True)
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
@@ -126,7 +122,7 @@ elif selected_page == "Take Attendance":
             identified_person = identify_face(face.reshape(1, -1))[0]
             add_attendance(identified_person)
             cv2.putText(frame, f'{identified_person}', (x + 6, y - 6), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2)
-        st.image(frame, channels="BGR", caption="Processed Image", use_column_width=True)
+        st.image(frame, caption="Processed Image", channels="RGB", use_column_width=True)
 
 elif selected_page == "Add New User":
     st.title("Add New User")
@@ -150,7 +146,7 @@ elif selected_page == "Add New User":
                     cv2.imwrite(userimagefolder + '/' + name, frame[y:y+h, x:x+w])
                     i += 1
                 j += 1
-            st.image(frame, channels="BGR", caption="Adding User", use_container_width=True)
+            st.image(frame, caption="Adding User", channels="RGB", use_container_width=True)
             if cv2.waitKey(1) == 27:
                 break
             if j == 500:
