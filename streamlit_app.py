@@ -108,7 +108,7 @@ elif selected_page == "Take Attendance":
 
     if picture:
         # Display the captured picture
-        st.image(picture, channels="BGR", use_container_width=True)
+        st.image(np.array(picture), channels="BGR", caption="Captured Image", use_column_width=True)
 
         # Convert the picture to OpenCV format
         np_image = np.array(picture)
@@ -122,7 +122,7 @@ elif selected_page == "Take Attendance":
             identified_person = identify_face(face.reshape(1, -1))[0]
             add_attendance(identified_person)
             cv2.putText(frame, f'{identified_person}', (x + 6, y - 6), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2)
-        st.image(frame, channels="BGR", use_container_width=True)
+        st.image(frame, channels="BGR", caption="Processed Image", use_column_width=True)
 
 elif selected_page == "Add New User":
     st.title("Add New User")
@@ -146,7 +146,7 @@ elif selected_page == "Add New User":
                     cv2.imwrite(userimagefolder + '/' + name, frame[y:y+h, x:x+w])
                     i += 1
                 j += 1
-            st.image(frame, channels="BGR", use_container_width=True)
+            st.image(frame, channels="BGR", caption="Adding User", use_container_width=True)
             if cv2.waitKey(1) == 27:
                 break
             if j == 500:
