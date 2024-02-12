@@ -1,3 +1,4 @@
+python3-opencv
 freeglut3-dev
 libgtk2.0-dev
 libgl1
