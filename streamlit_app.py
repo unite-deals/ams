@@ -107,7 +107,7 @@ elif selected_page == "Take Attendance":
     img_file_buffer = st.camera_input("Take a picture")
 
     if img_file_buffer is not None:
-        # Convert image from opened file to np.array using OpenCV
+        # Convert image from opened file to np.array
         bytes_data = img_file_buffer.getvalue()
         image_array = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
 
@@ -135,28 +135,24 @@ elif selected_page == "Add New User":
         userimagefolder = 'static/faces/' + newusername + '_' + str(newuserid)
         if not os.path.isdir(userimagefolder):
             os.makedirs(userimagefolder)
-        cap = cv2.VideoCapture(0)
-        i, j = 0, 0
-        while 1:
-            _, frame = cap.read()
-            faces = extract_faces(frame)
-            for (x, y, w, h) in faces:
-                cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 20), 2)
-                cv2.putText(frame, f'Images Captured: {i}/50', (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2,
-                            cv2.LINE_AA)
-                if j % 10 == 0:
-                    name = newusername + '_' + str(i) + '.jpg'
-                    cv2.imwrite(userimagefolder + '/' + name, frame[y:y+h, x:x+w])
-                    i += 1
-                j += 1
-            st.image(frame, caption="Adding User", channels="BGR", use_column_width=True)
-            if cv2.waitKey(1) == 27:
-                break
-            if j == 500:
-                break
+        st.write("Capture 50 images to train the model.")
+        capture_count = 0
+        while capture_count < 50:
+            # Using st.camera_input() to capture images
+            img_file_buffer = st.camera_input("Capture image")
+            if img_file_buffer is not None:
+                # Convert image from opened file to np.array
+                bytes_data = img_file_buffer.getvalue()
+                image_array = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
 
-        cap.release()
-        cv2.destroyAllWindows()
+                # Save the captured image
+                img_name = f"{newusername}_{capture_count}.jpg"
+                img_path = os.path.join(userimagefolder, img_name)
+                cv2.imwrite(img_path, cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR))
+                
+                capture_count += 1
+                st.write(f"Images Captured: {capture_count}/50")
+
         st.success('Training Model...')
         train_model()
         names, rolls, times, l = extract_attendance()
