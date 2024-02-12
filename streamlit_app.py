@@ -104,19 +104,18 @@ elif selected_page == "Take Attendance":
     st.write("Attendance:")
     
     # Using st.camera_input() to capture a static picture
-    picture = st.camera_input("Take a picture")
+    img_file_buffer = st.camera_input("Take a picture")
 
-    if picture:
+    if img_file_buffer is not None:
+        # Convert image from opened file to np.array using OpenCV
+        bytes_data = img_file_buffer.getvalue()
+        image_array = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+
+        # Display the captured image
+        st.image(image_array, caption="Captured Image", channels="BGR", use_column_width=True)
+
         # Convert the picture to OpenCV format
-        np_image = np.array(picture)
-        np_image = np_image.astype(np.uint8)
-        # Display the captured picture
-        image_bgr = cv2.imdecode(np_image, cv2.IMREAD_COLOR)
-        st.image(image_bgr, caption="Captured Image", channels="BGR", use_column_width=True)
-        frame = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-
-        # Display the captured picture
-        st.image(frame, caption="Captured Image", channels="RGB", use_column_width=True)
+        frame = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
@@ -150,7 +149,7 @@ elif selected_page == "Add New User":
                     cv2.imwrite(userimagefolder + '/' + name, frame[y:y+h, x:x+w])
                     i += 1
                 j += 1
-            st.image(frame, caption="Adding User", channels="RGB", use_container_width=True)
+            st.image(frame, caption="Adding User", channels="BGR", use_container_width=True)
             if cv2.waitKey(1) == 27:
                 break
             if j == 500:
