@@ -149,7 +149,7 @@ elif selected_page == "Add New User":
                     cv2.imwrite(userimagefolder + '/' + name, frame[y:y+h, x:x+w])
                     i += 1
                 j += 1
-            st.image(frame, caption="Adding User", channels="BGR", use_container_width=True)
+            st.image(frame, caption="Adding User", channels="BGR", use_column_width=True)
             if cv2.waitKey(1) == 27:
                 break
             if j == 500:
