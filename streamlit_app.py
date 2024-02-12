@@ -111,8 +111,9 @@ elif selected_page == "Take Attendance":
         np_image = np.array(picture)
         np_image = np_image.astype(np.uint8)
         # Display the captured picture
-        st.image(np_image, caption="Captured Image", channels="BGR", use_column_width=True)
-        frame = cv2.cvtColor(np_image, cv2.COLOR_BGR2RGB)
+        image_bgr = cv2.imdecode(np_image, cv2.IMREAD_COLOR)
+        st.image(image_bgr, caption="Captured Image", channels="BGR", use_column_width=True)
+        frame = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
 
         # Display the captured picture
         st.image(frame, caption="Captured Image", channels="RGB", use_column_width=True)
