@@ -108,7 +108,11 @@ elif selected_page == "Take Attendance":
 
     if picture:
         # Display the captured picture
-        st.image(np.array(picture), channels="BGR", caption="Captured Image", use_column_width=True)
+        np_image = np.array(picture)
+
+        # Display the captured picture
+        st.image(np_image, caption="Captured Image", use_column_width=True)
+        #st.image(np.array(picture), channels="BGR", caption="Captured Image", use_column_width=True)
 
         # Convert the picture to OpenCV format
         np_image = np.array(picture)
