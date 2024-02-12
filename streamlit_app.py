@@ -135,6 +135,8 @@ elif selected_page == "Add New User":
         userimagefolder = 'static/faces/' + newusername + '_' + str(newuserid)
         if not os.path.isdir(userimagefolder):
             os.makedirs(userimagefolder)
+        
+        # Using st.camera_input() to capture images
         st.write("Capture 50 images to train the model.")
         capture_count = 0
         while capture_count < 50:
