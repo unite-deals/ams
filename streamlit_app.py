@@ -141,7 +141,7 @@ elif selected_page == "Add New User":
         capture_count = 0
         while capture_count < 50:
             # Using st.camera_input() to capture images
-            img_file_buffer = st.camera_input("Capture image", key=f"capture_image_{capture_count}")
+            img_file_buffer = st.camera_input(f"Capture image {capture_count}", key=f"capture_image_{capture_count}")
             if img_file_buffer is not None:
                 # Convert image from opened file to np.array
                 bytes_data = img_file_buffer.getvalue()
