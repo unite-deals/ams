@@ -156,53 +156,59 @@ elif selected_page == "Add New User":
         if not os.path.isdir(userimagefolder):
             os.makedirs(userimagefolder)
 
+        # Allow the user to choose a camera index
+        camera_index = st.selectbox("Select Camera Index:", list(range(10)))
+
         # Use OpenCV to capture camera frames
-        cap = cv2.VideoCapture(0)
-        capture_count = 0
-        while capture_count < 50:
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            # Convert the frame to grayscale
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-            # Detect faces in the grayscale frame
-            detected_faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
-
-            # Draw rectangles around the detected faces
-            for (x, y, w, h) in detected_faces:
-                cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 20), 2)
-                resized_face = cv2.resize(frame[y:y+h, x:x+w], (50, 50))
-                user_image = resized_face.ravel()
-                if len(user_image) > 0:
-                    faces.append(user_image)
-
-                capture_count += 1
-                st.write(f"Images Captured: {capture_count}/50")
-
-            st.image(frame, channels="BGR", caption="Adding User", use_container_width=True)
-
-            # Break the loop if 'q' is pressed
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-
-        # Release the VideoCapture object and close all windows
-        cap.release()
-        cv2.destroyAllWindows()
-
-        if len(faces) > 0:
-            # Ensure that faces is a 2D array
-            faces = np.array(faces)
-            faces = faces.reshape(-1, 50 * 50 * 3)  # Assuming the image size is 50x50 with 3 channels (BGR)
-
-            st.success('Training Model...')
-            train_model()
-            names, rolls, times, l = extract_attendance()
-            if totalreg() > 0:
-                st.success("User added successfully!")
-                st.button("Go to Attendance", key="go_to_attendance")
-            else:
-                st.error("Failed to add user. Please try again.")
+        cap = cv2.VideoCapture(camera_index)
+        if not cap.isOpened():
+            st.error(f"Error: Unable to open camera at index {camera_index}. Please try a different index.")
         else:
-            st.error("No face detected. Please try again.")
+            capture_count = 0
+            while capture_count < 50:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                # Convert the frame to grayscale
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+                # Detect faces in the grayscale frame
+                detected_faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+
+                # Draw rectangles around the detected faces
+                for (x, y, w, h) in detected_faces:
+                    cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 20), 2)
+                    resized_face = cv2.resize(frame[y:y+h, x:x+w], (50, 50))
+                    user_image = resized_face.ravel()
+                    if len(user_image) > 0:
+                        faces.append(user_image)
+
+                    capture_count += 1
+                    st.write(f"Images Captured: {capture_count}/50")
+
+                st.image(frame, channels="BGR", caption="Adding User", use_container_width=True)
+
+                # Break the loop if 'q' is pressed
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+
+            # Release the VideoCapture object and close all windows
+            cap.release()
+            cv2.destroyAllWindows()
+
+            if len(faces) > 0:
+                # Ensure that faces is a 2D array
+                faces = np.array(faces)
+                faces = faces.reshape(-1, 50 * 50 * 3)  # Assuming the image size is 50x50 with 3 channels (BGR)
+
+                st.success('Training Model...')
+                train_model()
+                names, rolls, times, l = extract_attendance()
+                if totalreg() > 0:
+                    st.success("User added successfully!")
+                    st.button("Go to Attendance", key="go_to_attendance")
+                else:
+                    st.error("Failed to add user. Please try again.")
+            else:
+                st.error("No face detected. Please try again.")
