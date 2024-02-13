@@ -1,11 +1,10 @@
 opencv-python==4.7.0.72
-flask==2.2.3
+#flask==2.2.3
 numpy==1.24.2
+streamlit==1.16.0
 scikit-learn
 pandas==1.5.3
 joblib==1.2.0
-gunicorn==19.7.1
-Werkzeug==2.2.2
-flask-cors
-face-recognition
-dlib
+#gunicorn==19.7.1
+#Werkzeug==2.2.2
+#flask-cors
