@@ -103,29 +103,37 @@ elif selected_page == "Take Attendance":
     st.write("Press 'q' to quit the camera feed.")
     st.write("Attendance:")
     
-    # Using st.camera_input() to capture a static picture
-    img_file_buffer = st.camera_input("Take a picture", key="capture_image")
+    # Using cv2.VideoCapture to capture video frames
+    cap = cv2.VideoCapture(0)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    if img_file_buffer is not None:
-        # Convert image from opened file to np.array
-        bytes_data = img_file_buffer.getvalue()
-        image_array = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
-
-        # Display the captured image
-        st.image(image_array, caption="Captured Image", channels="BGR", use_column_width=True)
-
-        # Convert the picture to OpenCV format
-        frame = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
-
+        # Convert the frame to grayscale
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # Detect faces in the grayscale frame
         faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+
+        # Draw rectangles around the detected faces
         for (x, y, w, h) in faces:
             cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
             face = cv2.resize(frame[y:y+h, x:x+w], (50, 50))
             identified_person = identify_face(face.reshape(1, -1))[0]
             add_attendance(identified_person)
             cv2.putText(frame, f'{identified_person}', (x + 6, y - 6), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2)
-        st.image(frame, caption="Processed Image", channels="RGB", use_column_width=True)
+
+        # Display the resulting frame
+        st.image(frame, caption="Processed Image", channels="BGR", use_column_width=True)
+
+        # Break the loop if 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # Release the VideoCapture object and close all windows
+    cap.release()
+    cv2.destroyAllWindows()
 
 elif selected_page == "Add New User":
     st.title("Add New User")
@@ -136,21 +144,26 @@ elif selected_page == "Add New User":
         if not os.path.isdir(userimagefolder):
             os.makedirs(userimagefolder)
         
-        # Using st.camera_input() to capture images
-        st.write("Capture 50 images to train the model.")
+        # Using cv2.VideoCapture to capture video frames for adding a new user
+        cap = cv2.VideoCapture(0)
         capture_count = 0
         while capture_count < 50:
-            # Using st.camera_input() to capture images
-            img_file_buffer = st.camera_input(f"Capture image {capture_count}", key=f"capture_image_{capture_count}")
-            if img_file_buffer is not None:
-                # Convert image from opened file to np.array
-                bytes_data = img_file_buffer.getvalue()
-                image_array = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-                # Save the captured image
-                img_name = f"{newusername}_{capture_count}.jpg"
-                img_path = os.path.join(userimagefolder, img_name)
-                cv2.imwrite(img_path, cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR))
+            # Convert the frame to grayscale
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            # Detect faces in the grayscale frame
+            faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+
+            # Draw rectangles around the detected faces
+            for (x, y, w, h) in faces:
+                cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 20), 2)
+                name = newusername + '_' + str(capture_count) + '.jpg'
+                img_path = os.path.join(userimagefolder, name)
+                cv2.imwrite(img_path, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                 
                 capture_count += 1
                 st.write(f"Images Captured: {capture_count}/50")
