@@ -150,35 +150,40 @@ def take_attendance_page():
         st.image(image_array_copy, channels="BGR", use_column_width=True)
 
 def add_student_page():
-    st.write("## Add New Student")
+    newusername = st.text_input('Enter new username:')
+    newuserid = st.text_input('Enter new user ID:')
+    userimagefolder = 'static/faces/' + newusername + '_' + str(newuserid)
 
-    newusername = st.text_input("Enter Student Name:")
-    newuserid = st.text_input("Enter Student ID:")
+    # Check if the user folder already exists
+    if not os.path.isdir(userimagefolder):
+        os.makedirs(userimagefolder)
 
-    if st.button("Add Student"):
-        userimagefolder = 'static/faces/' + newusername + '_' + str(newuserid)
-        if not os.path.isdir(userimagefolder):
-            os.makedirs(userimagefolder)
+    i = 0
 
-        st.write("Please take 10 images for training.")
+    # Capture 10 images for training using Streamlit's camera input
+    for i in range(10):
+        img_file_buffer = st.camera_input(f"Take picture {i + 1}", key=f"image_{i}")
 
-        # Capture 10 images for training
-        for i in range(10):
-            img_file_buffer = st.camera_input("Take a picture", key=f"image_{i}")
-            if img_file_buffer is not None:
-                bytes_data = img_file_buffer.getvalue()
-                image_array = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+        if img_file_buffer is not None:
+            bytes_data = img_file_buffer.getvalue()
+            image_array = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+            faces = face_detector.detectMultiScale(image_array, scaleFactor=1.3, minNeighbors=5)
+
+            for (x, y, w, h) in faces:
+                cv2.rectangle(image_array, (x, y), (x + w, y + h), (255, 0, 20), 2)
+                cv2.putText(image_array, f'Images Captured: {i + 1}/10', (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1,
+                            (255, 0, 20), 2, cv2.LINE_AA)
 
                 # Save the captured image
-                name = newusername + '_' + str(i) + '.jpg'
-                cv2.imwrite(userimagefolder + '/' + name, image_array)
+                name = f'{newusername}_{i}.jpg'
+                cv2.imwrite(os.path.join(userimagefolder, name), image_array[y:y + h, x:x + w])
 
-                # Display the captured image
-                st.image(image_array, channels="BGR", use_column_width=True, caption=f"Image {i + 1}")
+    st.success("Images Captured. Training the model...")
 
-        st.write('Training Model')
-        train_model()
+    # Train the model after capturing images
+    train_model()
 
-        st.success("Student added successfully!")
+    # Display success message or other relevant information
+    st.success("Training complete.")
 if __name__ == "__main__":
     main()
