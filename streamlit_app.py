@@ -7,6 +7,24 @@ from sklearn.neighbors import KNeighborsClassifier
 import pandas as pd
 import joblib
 
+hide_github_link_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visiblity: hidden;}
+    header {visibility: hidden;}
+        .viewerBadge_container__1QSob {
+            display: none !important;
+        }
+    </style>
+"""
+st.markdown(hide_github_link_style, unsafe_allow_html=True)
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
 # Saving Date today in 2 different formats
 datetoday = date.today().strftime("%m_%d_%y")
 datetoday2 = date.today().strftime("%d-%B-%Y")
@@ -150,6 +168,7 @@ def take_attendance_page():
         st.image(image_array_copy, channels="BGR", use_column_width=True)
 
 def add_student_page():
+    st.title("Capture Images 10 various poses")
     newusername = st.text_input('Enter new username:')
     newuserid = st.text_input('Enter new user ID:')
     userimagefolder = 'static/faces/' + newusername + '_' +'ID:'+ str(newuserid)
