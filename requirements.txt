@@ -5,3 +5,4 @@ scikit-learn
 pandas==1.5.3
 joblib==1.2.0
 gunicorn==19.7.1
+Werkzeug==2.2.2
