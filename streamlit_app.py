@@ -1,214 +1,111 @@
-import os
 import streamlit as st
-from datetime import date, datetime
-import numpy as np
-from sklearn.neighbors import KNeighborsClassifier
 import pandas as pd
-import joblib
 import cv2
+import os
+import numpy as np
+from datetime import datetime
+from sklearn.neighbors import KNeighborsClassifier
 
-# Streamlit app layout
-st.set_page_config(page_title="Attendance System", page_icon="✅")
+# Set page configuration
+st.set_page_config(page_title="Attendance Management", page_icon="✅")
 
-# Saving Date today in 2 different formats
-datetoday = date.today().strftime("%m_%d_%y")
-datetoday2 = date.today().strftime("%d-%B-%Y")
+# Database
+database_path = "database.csv"
+if not os.path.exists(database_path):
+    columns = ["ID", "Name", "Time"]
+    database = pd.DataFrame(columns=columns)
+    database.to_csv(database_path, index=False)
+else:
+    database = pd.read_csv(database_path)
 
-# Initializing VideoCapture object to access WebCam
-face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+# Load face recognition model
+knn_model_path = "face_recognition_model.pkl"
+if os.path.exists(knn_model_path):
+    knn = KNeighborsClassifier(n_neighbors=5)
+    knn.fit(np.zeros((1, 2500)), ["Unknown"])
+else:
+    st.warning("Face recognition model not found. Please add new students to train the model.")
 
-# If these directories don't exist, create them
-if not os.path.isdir('Attendance'):
-    os.makedirs('Attendance')
-if not os.path.isdir('static'):
-    os.makedirs('static')
-if not os.path.isdir('static/faces'):
-    os.makedirs('static/faces')
-if f'Attendance-{datetoday}.csv' not in os.listdir('Attendance'):
-    with open(f'Attendance/Attendance-{datetoday}.csv', 'w') as f:
-        f.write('Name,Roll,Time')
+# Haarcascade for face detection
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# get a number of total registered users
-def totalreg():
-    return len(os.listdir('static/faces'))
-
-# extract the face from an image
 def extract_faces(img):
-    if img is not None and len(img) > 0:  # Check if img is not empty
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        face_points = face_detector.detectMultiScale(gray, 1.3, 5)
-        return face_points
-    else:
-        return []
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+    return faces
 
-# Identify face using ML model
 def identify_face(facearray):
-    model = joblib.load('static/face_recognition_model.pkl')
-    return model.predict(facearray)
+    return knn.predict(facearray)
 
-# A function which trains the model on all the faces available in faces folder
-def train_model():
-    faces = []
-    labels = []
-    userlist = os.listdir('static/faces')
-    for user in userlist:
-        for imgname in os.listdir(f'static/faces/{user}'):
-            img = cv2.imread(f'static/faces/{user}/{imgname}')
-            resized_face = cv2.resize(img, (50, 50))
-            faces.append(resized_face.ravel())
-            labels.append(user)
+def add_attendance(student_id, student_name):
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    database.loc[len(database)] = [student_id, student_name, current_time]
+    database.to_csv(database_path, index=False)
+    st.success(f"Attendance recorded for {student_name} (ID: {student_id}) at {current_time}")
 
-    # Ensure that faces is a 2D array
-    faces = np.array(faces)
-    faces = faces.reshape(-1, 50 * 50 * 3)  # Assuming the image size is 50x50 with 3 channels (BGR)
+def add_new_student(student_id, student_name):
+    st.info("Please look into the camera to capture your face.")
+    picture = st.camera_input("Take a picture", key="add_student_camera")
+    
+    if picture:
+        np_image = np.array(picture)
+        face = extract_faces(np_image)
+        
+        if len(face) == 1:
+            resized_face = cv2.resize(np_image[face[0][1]:face[0][1]+face[0][3], face[0][0]:face[0][0]+face[0][2]], (50, 50))
+            face_array = resized_face.ravel().reshape(1, -1)
+            
+            # Update face recognition model
+            knn_model_path = "face_recognition_model.pkl"
+            if os.path.exists(knn_model_path):
+                knn.fit(np.vstack([knn.kneighbors_graph()["nonzero"][0], face_array]),
+                        np.append(knn.predict(knn.kneighbors_graph()["nonzero"][0]), student_name))
+            else:
+                knn.fit(face_array, [student_name])
 
-    knn = KNeighborsClassifier(n_neighbors=5)
-    knn.fit(faces, labels)
-    joblib.dump(knn, 'static/face_recognition_model.pkl')
+            # Save the captured face
+            face_folder = f"faces/{student_name}_{student_id}"
+            os.makedirs(face_folder, exist_ok=True)
+            cv2.imwrite(f"{face_folder}/{student_name}_{student_id}.jpg", resized_face)
 
-    knn = KNeighborsClassifier(n_neighbors=5)
-    knn.fit(faces, labels)
-    joblib.dump(knn, 'static/face_recognition_model.pkl')
-
-# Extract info from today's attendance file in attendance folder
-def extract_attendance():
-    df = pd.read_csv(f'Attendance/Attendance-{datetoday}.csv')
-    names = df['Name']
-    rolls = df['Roll']
-    times = df['Time']
-    l = len(df)
-    return names, rolls, times, l
-
-# Add Attendance of a specific user
-def add_attendance(name):
-    username = name.split('_')[0]
-    userid = name.split('_')[1]
-    current_time = datetime.now().strftime("%H:%M:%S")
-
-    df = pd.read_csv(f'Attendance/Attendance-{datetoday}.csv')
-    if str(userid) not in list(df['Roll']):
-        with open(f'Attendance/Attendance-{datetoday}.csv', 'a') as f:
-            f.write(f'\n{username},{userid},{current_time}')
+            st.success(f"New student added successfully! (ID: {student_id}, Name: {student_name})")
+        else:
+            st.warning("No face detected. Please try again.")
 
 # Streamlit app layout
-st.title("Attendance System")
+st.title("Attendance Management System")
 
 # Sidebar navigation
-st.sidebar.header("Navigation")
-selected_page = st.sidebar.radio("Go to:", ["Home", "Take Attendance", "Add New User"])
+selected_page = st.sidebar.radio("Go to:", ["View Database", "Take Attendance", "Add New Student"])
 
-if selected_page == "Home":
-    names, rolls, times, l = extract_attendance()
-    st.write(f"Date: {datetoday2}")
-    st.write("Total Registered Users:", totalreg())
-    st.write("Attendance:")
-    if l > 0:
-        st.table(pd.DataFrame({"Name": names, "Roll": rolls, "Time": times}))
-    else:
-        st.write("No attendance recorded yet.")
+if selected_page == "View Database":
+    st.subheader("Database")
+    st.table(database)
 
 elif selected_page == "Take Attendance":
+    st.subheader("Take Attendance")
     st.write("Press 'q' to quit the camera feed.")
-    st.write("Attendance:")
     
-    # Using cv2.VideoCapture to capture video frames
-    cap = cv2.VideoCapture(0)
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+    picture = st.camera_input("Take a picture", key="take_attendance_camera")
 
-        # Convert the frame to grayscale
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    if picture:
+        np_image = np.array(picture)
+        faces = extract_faces(np_image)
 
-        # Detect faces in the grayscale frame
-        faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
-
-        # Draw rectangles around the detected faces
         for (x, y, w, h) in faces:
-            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            face = cv2.resize(frame[y:y+h, x:x+w], (50, 50))
+            cv2.rectangle(np_image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            face = cv2.resize(np_image[y:y+h, x:x+w], (50, 50))
             identified_person = identify_face(face.reshape(1, -1))[0]
-            add_attendance(identified_person)
-            cv2.putText(frame, f'{identified_person}', (x + 6, y - 6), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2)
+            add_attendance(identified_person, "Unknown")
+            cv2.putText(np_image, f'{identified_person} (Unknown)', (x + 6, y - 6),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2)
 
-        # Display the resulting frame
-        st.image(frame, caption="Processed Image", channels="BGR", use_column_width=True)
+        st.image(np_image, channels="BGR", caption="Processed Image", use_column_width=True)
 
-        # Break the loop if 'q' is pressed
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+elif selected_page == "Add New Student":
+    st.subheader("Add New Student")
+    new_student_id = st.text_input("Enter new student ID:")
+    new_student_name = st.text_input("Enter new student name:")
 
-    # Release the VideoCapture object and close all windows
-    cap.release()
-    cv2.destroyAllWindows()
-
-elif selected_page == "Add New User":
-    st.title("Add New User")
-    newusername = st.text_input("Enter new user name:")
-    newuserid = st.text_input("Enter new user ID:")
-    
-    # Initialize faces before the loop
-    faces = []
-
-    if st.button("Start Adding User"):
-        userimagefolder = 'static/faces/' + newusername + '_' + str(newuserid)
-        if not os.path.isdir(userimagefolder):
-            os.makedirs(userimagefolder)
-
-        # Use OpenCV to capture camera frames (default camera index 0)
-        cap = cv2.VideoCapture(0)
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        FRAME_WINDOW = st.image([])
-        if not cap.isOpened():
-            st.error("Error: Unable to open the default camera. Please make sure it is connected.")
-        else:
-            capture_count = 0
-            while capture_count < 50:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                # Convert the frame to grayscale
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-                # Detect faces in the grayscale frame
-                detected_faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
-
-                # Draw rectangles around the detected faces
-                for (x, y, w, h) in detected_faces:
-                    cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 20), 2)
-                    resized_face = cv2.resize(frame[y:y+h, x:x+w], (50, 50))
-                    user_image = resized_face.ravel()
-                    if len(user_image) > 0:
-                        faces.append(user_image)
-
-                    capture_count += 1
-                    st.write(f"Images Captured: {capture_count}/50")
-
-                st.image(frame, channels="BGR", caption="Adding User", use_container_width=True)
-
-                # Break the loop if 'q' is pressed
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-
-            # Release the VideoCapture object and close all windows
-            cap.release()
-            cv2.destroyAllWindows()
-
-            if len(faces) > 0:
-                # Ensure that faces is a 2D array
-                faces = np.array(faces)
-                faces = faces.reshape(-1, 50 * 50 * 3)  # Assuming the image size is 50x50 with 3 channels (BGR)
-
-                st.success('Training Model...')
-                train_model()
-                names, rolls, times, l = extract_attendance()
-                if totalreg() > 0:
-                    st.success("User added successfully!")
-                    st.button("Go to Attendance", key="go_to_attendance")
-                else:
-                    st.error("Failed to add user. Please try again.")
-            else:
-                st.error("No face detected. Please try again.")
+    if st.button("Add Student"):
+        add_new_student(new_student_id, new_student_name)
