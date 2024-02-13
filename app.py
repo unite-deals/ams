@@ -20,7 +20,7 @@ datetoday2 = date.today().strftime("%d-%B-%Y")
 
 # Initializing VideoCapture object to access WebCam
 face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
-#cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(0)
 '''
 try:
     cap = cv2.VideoCapture(0)
@@ -159,7 +159,7 @@ def add():
     cap = cv2.VideoCapture(0)
     i, j = 0, 0
     while j < 500:
-        _, frame = cap.read()
+        i, frame = cap.read()
         #faces = extract_faces(frame)
         faces=cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = face_detector.detectMultiScale(faces, 1.3, 5)
