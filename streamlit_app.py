@@ -158,6 +158,9 @@ elif selected_page == "Add New User":
 
         # Use OpenCV to capture camera frames (default camera index 0)
         cap = cv2.VideoCapture(0)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        FRAME_WINDOW = st.image([])
         if not cap.isOpened():
             st.error("Error: Unable to open the default camera. Please make sure it is connected.")
         else:
