@@ -60,8 +60,11 @@ def train_model():
 
     # Ensure that faces is a 2D array
     faces = np.array(faces)
-    if faces.ndim == 1:
-        faces = faces.reshape(-1, 1)
+    faces = faces.reshape(-1, 50 * 50 * 3)  # Assuming the image size is 50x50 with 3 channels (BGR)
+
+    knn = KNeighborsClassifier(n_neighbors=5)
+    knn.fit(faces, labels)
+    joblib.dump(knn, 'static/face_recognition_model.pkl')
 
     knn = KNeighborsClassifier(n_neighbors=5)
     knn.fit(faces, labels)
