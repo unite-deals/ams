@@ -20,12 +20,13 @@ datetoday2 = date.today().strftime("%d-%B-%Y")
 
 # Initializing VideoCapture object to access WebCam
 face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
-
+cap = cv2.VideoCapture(0)
+'''
 try:
     cap = cv2.VideoCapture(0)
 except:
     cap = cv2.VideoCapture(1)
-
+'''
 # If these directories don't exist, create them
 if not os.path.isdir('Attendance'):
     os.makedirs('Attendance')
