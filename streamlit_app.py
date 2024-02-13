@@ -147,6 +147,10 @@ elif selected_page == "Add New User":
     st.title("Add New User")
     newusername = st.text_input("Enter new user name:")
     newuserid = st.text_input("Enter new user ID:")
+    
+    # Initialize faces before the loop
+    faces = []
+
     if st.button("Start Adding User"):
         userimagefolder = 'static/faces/' + newusername + '_' + str(newuserid)
         if not os.path.isdir(userimagefolder):
@@ -164,10 +168,10 @@ elif selected_page == "Add New User":
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
             # Detect faces in the grayscale frame
-            faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+            detected_faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
 
             # Draw rectangles around the detected faces
-            for (x, y, w, h) in faces:
+            for (x, y, w, h) in detected_faces:
                 cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 20), 2)
                 resized_face = cv2.resize(frame[y:y+h, x:x+w], (50, 50))
                 user_image = resized_face.ravel()
