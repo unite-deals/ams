@@ -44,6 +44,23 @@ if f'Attendance-{datetoday}.csv' not in os.listdir('Attendance'):
     with open(f'Attendance/Attendance-{datetoday}.csv', 'w') as f:
         f.write('Name,Roll,Time')
 
+def set_timezone():
+    current_local_time = datetime.now()
+    timezone_js = """
+        <script>
+            var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            var data = { timezone: timezone };
+            fetch("/set_timezone", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            });
+        </script>
+    """
+    st.markdown(timezone_js, unsafe_allow_html=True)
+
 # get a number of total registered users
 def totalreg():
     return len(os.listdir('static/faces'))
