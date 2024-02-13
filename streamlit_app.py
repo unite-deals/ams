@@ -152,7 +152,7 @@ def take_attendance_page():
 def add_student_page():
     newusername = st.text_input('Enter new username:')
     newuserid = st.text_input('Enter new user ID:')
-    userimagefolder = 'static/faces/' + newusername + '_' + str(newuserid)
+    userimagefolder = 'static/faces/' + newusername + '_' +'ID:'+ str(newuserid)
 
     # Check if the user folder already exists
     if not os.path.isdir(userimagefolder):
