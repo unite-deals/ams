@@ -156,13 +156,10 @@ elif selected_page == "Add New User":
         if not os.path.isdir(userimagefolder):
             os.makedirs(userimagefolder)
 
-        # Allow the user to choose a camera index
-        camera_index = st.selectbox("Select Camera Index:", list(range(10)))
-
-        # Use OpenCV to capture camera frames
-        cap = cv2.VideoCapture(camera_index)
+        # Use OpenCV to capture camera frames (default camera index 0)
+        cap = cv2.VideoCapture(0)
         if not cap.isOpened():
-            st.error(f"Error: Unable to open camera at index {camera_index}. Please try a different index.")
+            st.error("Error: Unable to open the default camera. Please make sure it is connected.")
         else:
             capture_count = 0
             while capture_count < 50:
