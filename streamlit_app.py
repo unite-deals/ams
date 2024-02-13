@@ -57,7 +57,12 @@ def train_model():
             resized_face = cv2.resize(img, (50, 50))
             faces.append(resized_face.ravel())
             labels.append(user)
+
+    # Ensure that faces is a 2D array
     faces = np.array(faces)
+    if faces.ndim == 1:
+        faces = faces.reshape(-1, 1)
+
     knn = KNeighborsClassifier(n_neighbors=5)
     knn.fit(faces, labels)
     joblib.dump(knn, 'static/face_recognition_model.pkl')
