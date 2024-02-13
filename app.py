@@ -9,14 +9,14 @@ from sklearn.neighbors import KNeighborsClassifier
 import pandas as pd
 import joblib
 from flask import Flask, request, jsonify
-#from flask_cors import CORS
+from flask_cors import CORS
 
 
 # import db
 
 #### Defining Flask App
 app = Flask(__name__)
-#CORS(app)
+CORS(app)
 #### Saving Date today in 2 different formats
 datetoday = date.today().strftime("%m_%d_%y")
 datetoday2 = date.today().strftime("%d-%B-%Y")
@@ -24,9 +24,9 @@ datetoday2 = date.today().strftime("%d-%B-%Y")
 #### Initializing VideoCapture object to access WebCam
 face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 try:
-    cap = cv2.VideoCapture(1)
-except:
     cap = cv2.VideoCapture(0)
+except:
+    cap = cv2.VideoCapture(1)
 
 #### If these directories don't exist, create them
 if not os.path.isdir('Attendance'):
