@@ -151,8 +151,8 @@ elif selected_page == "Add New User":
         userimagefolder = 'static/faces/' + newusername + '_' + str(newuserid)
         if not os.path.isdir(userimagefolder):
             os.makedirs(userimagefolder)
-        
-        # Using cv2.VideoCapture to capture video frames for adding a new user
+
+        # Use OpenCV to capture camera frames
         cap = cv2.VideoCapture(0)
         capture_count = 0
         while capture_count < 50:
@@ -172,9 +172,19 @@ elif selected_page == "Add New User":
                 name = newusername + '_' + str(capture_count) + '.jpg'
                 img_path = os.path.join(userimagefolder, name)
                 cv2.imwrite(img_path, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                
+
                 capture_count += 1
                 st.write(f"Images Captured: {capture_count}/50")
+
+            st.image(frame, channels="BGR", caption="Adding User", use_container_width=True)
+
+            # Break the loop if 'q' is pressed
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        # Release the VideoCapture object and close all windows
+        cap.release()
+        cv2.destroyAllWindows()
 
         st.success('Training Model...')
         train_model()
