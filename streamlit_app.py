@@ -1,111 +1,181 @@
 import streamlit as st
-import pandas as pd
 import cv2
 import os
 import numpy as np
-from datetime import datetime
+from datetime import date, datetime
 from sklearn.neighbors import KNeighborsClassifier
+import pandas as pd
+import joblib
 
-# Set page configuration
-st.set_page_config(page_title="Attendance Management", page_icon="✅")
+# Saving Date today in 2 different formats
+datetoday = date.today().strftime("%m_%d_%y")
+datetoday2 = date.today().strftime("%d-%B-%Y")
 
-# Database
-database_path = "database.csv"
-if not os.path.exists(database_path):
-    columns = ["ID", "Name", "Time"]
-    database = pd.DataFrame(columns=columns)
-    database.to_csv(database_path, index=False)
-else:
-    database = pd.read_csv(database_path)
+# Initializing VideoCapture object to access WebCam
+face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+cap = cv2.VideoCapture(0)
 
-# Load face recognition model
-knn_model_path = "face_recognition_model.pkl"
-if os.path.exists(knn_model_path):
-    knn = KNeighborsClassifier(n_neighbors=5)
-    knn.fit(np.zeros((1, 2500)), ["Unknown"])
-else:
-    st.warning("Face recognition model not found. Please add new students to train the model.")
+# If these directories don't exist, create them
+if not os.path.isdir('Attendance'):
+    os.makedirs('Attendance')
+if not os.path.isdir('static'):
+    os.makedirs('static')
+if not os.path.isdir('static/faces'):
+    os.makedirs('static/faces')
+if f'Attendance-{datetoday}.csv' not in os.listdir('Attendance'):
+    with open(f'Attendance/Attendance-{datetoday}.csv', 'w') as f:
+        f.write('Name,Roll,Time')
 
-# Haarcascade for face detection
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+# get a number of total registered users
+def totalreg():
+    return len(os.listdir('static/faces'))
 
+# extract the face from an image
 def extract_faces(img):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
-    return faces
+    if img != []:
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        face_points = face_detector.detectMultiScale(gray, 1.3, 5)
+        return face_points
+    else:
+        return []
 
+# Identify face using ML model
 def identify_face(facearray):
-    return knn.predict(facearray)
+    model = joblib.load('static/face_recognition_model.pkl')
+    return model.predict(facearray)
 
-def add_attendance(student_id, student_name):
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    database.loc[len(database)] = [student_id, student_name, current_time]
-    database.to_csv(database_path, index=False)
-    st.success(f"Attendance recorded for {student_name} (ID: {student_id}) at {current_time}")
+# A function which trains the model on all the faces available in faces folder
+def train_model():
+    faces = []
+    labels = []
+    userlist = os.listdir('static/faces')
+    for user in userlist:
+        for imgname in os.listdir(f'static/faces/{user}'):
+            img = cv2.imread(f'static/faces/{user}/{imgname}')
+            resized_face = cv2.resize(img, (50, 50))
+            faces.append(resized_face.ravel())
+            labels.append(user)
+    faces = np.array(faces)
+    knn = KNeighborsClassifier(n_neighbors=5)
+    knn.fit(faces, labels)
+    joblib.dump(knn, 'static/face_recognition_model.pkl')
 
-def add_new_student(student_id, student_name):
-    st.info("Please look into the camera to capture your face.")
-    picture = st.camera_input("Take a picture", key="add_student_camera")
-    
-    if picture:
-        np_image = np.array(picture)
-        face = extract_faces(np_image)
-        
-        if len(face) == 1:
-            resized_face = cv2.resize(np_image[face[0][1]:face[0][1]+face[0][3], face[0][0]:face[0][0]+face[0][2]], (50, 50))
-            face_array = resized_face.ravel().reshape(1, -1)
-            
-            # Update face recognition model
-            knn_model_path = "face_recognition_model.pkl"
-            if os.path.exists(knn_model_path):
-                knn.fit(np.vstack([knn.kneighbors_graph()["nonzero"][0], face_array]),
-                        np.append(knn.predict(knn.kneighbors_graph()["nonzero"][0]), student_name))
-            else:
-                knn.fit(face_array, [student_name])
+# Extract info from today's attendance file in attendance folder
+def extract_attendance():
+    df = pd.read_csv(f'Attendance/Attendance-{datetoday}.csv')
+    names = df['Name']
+    rolls = df['Roll']
+    times = df['Time']
+    l = len(df)
+    return names, rolls, times, l
 
-            # Save the captured face
-            face_folder = f"faces/{student_name}_{student_id}"
-            os.makedirs(face_folder, exist_ok=True)
-            cv2.imwrite(f"{face_folder}/{student_name}_{student_id}.jpg", resized_face)
+# Add Attendance of a specific user
+def add_attendance(name):
+    username = name.split('_')[0]
+    userid = name.split('_')[1]
+    current_time = datetime.now().strftime("%H:%M:%S")
 
-            st.success(f"New student added successfully! (ID: {student_id}, Name: {student_name})")
-        else:
-            st.warning("No face detected. Please try again.")
+    df = pd.read_csv(f'Attendance/Attendance-{datetoday}.csv')
+    if str(userid) not in list(df['Roll']):
+        with open(f'Attendance/Attendance-{datetoday}.csv', 'a') as f:
+            f.write(f'\n{username},{userid},{current_time}')
 
-# Streamlit app layout
-st.title("Attendance Management System")
+# Streamlit app
+def main():
+    st.title("Attendance Management System")
 
-# Sidebar navigation
-selected_page = st.sidebar.radio("Go to:", ["View Database", "Take Attendance", "Add New Student"])
+    # Sidebar
+    st.sidebar.header("Navigation")
+    page = st.sidebar.selectbox("Select a page", ["Home", "Take Attendance", "Add Student"])
 
-if selected_page == "View Database":
-    st.subheader("Database")
-    st.table(database)
+    if page == "Home":
+        home_page()
+    elif page == "Take Attendance":
+        take_attendance_page()
+    elif page == "Add Student":
+        add_student_page()
 
-elif selected_page == "Take Attendance":
-    st.subheader("Take Attendance")
-    st.write("Press 'q' to quit the camera feed.")
-    
-    picture = st.camera_input("Take a picture", key="take_attendance_camera")
+def home_page():
+    names, rolls, times, l = extract_attendance()
+    st.write(f"## Today's Attendance ({datetoday2})")
+    st.table(pd.DataFrame({"Name": names, "Roll": rolls, "Time": times}))
 
-    if picture:
-        np_image = np.array(picture)
-        faces = extract_faces(np_image)
+    st.write(f"Total Registered Students: {totalreg()}")
 
+def take_attendance_page():
+    if 'face_recognition_model.pkl' not in os.listdir('static'):
+        st.warning("There is no trained model in the static folder. Please add a new face to continue.")
+        return
+
+    st.write("## Taking Attendance")
+
+    cap = cv2.VideoCapture(0)
+    ret, frame = cap.read()
+
+    while ret:
+        # Convert the frame to grayscale
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # Detect faces in the grayscale frame
+        faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+
+        # Draw rectangles around the detected faces
         for (x, y, w, h) in faces:
-            cv2.rectangle(np_image, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            face = cv2.resize(np_image[y:y+h, x:x+w], (50, 50))
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            face = cv2.resize(frame[y:y + h, x:x + w], (50, 50))
             identified_person = identify_face(face.reshape(1, -1))[0]
-            add_attendance(identified_person, "Unknown")
-            cv2.putText(np_image, f'{identified_person} (Unknown)', (x + 6, y - 6),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2)
+            add_attendance(identified_person)
+            cv2.putText(frame, f'{identified_person}', (x + 6, y - 6), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2)
 
-        st.image(np_image, channels="BGR", caption="Processed Image", use_column_width=True)
+        # Display the resulting frame
+        st.image(frame, channels="BGR")
 
-elif selected_page == "Add New Student":
-    st.subheader("Add New Student")
-    new_student_id = st.text_input("Enter new student ID:")
-    new_student_name = st.text_input("Enter new student name:")
+        # Break the loop if 'q' is pressed
+        if cv2.waitKey(1) == ord('q'):
+            break
+
+        ret, frame = cap.read()
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+def add_student_page():
+    st.write("## Add New Student")
+
+    newusername = st.text_input("Enter Student Name:")
+    newuserid = st.text_input("Enter Student ID:")
 
     if st.button("Add Student"):
-        add_new_student(new_student_id, new_student_name)
+        userimagefolder = 'static/faces/' + newusername + '_' + str(newuserid)
+        if not os.path.isdir(userimagefolder):
+            os.makedirs(userimagefolder)
+
+        cap = cv2.VideoCapture(0)
+        i, j = 0, 0
+        while j < 500:
+            i, frame = cap.read()
+            faces = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = face_detector.detectMultiScale(faces, 1.3, 5)
+            for (x, y, w, h) in faces:
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 20), 2)
+                cv2.putText(frame, f'Images Captured: {i}/50', (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2,
+                            cv2.LINE_AA)
+                if j % 10 == 0:
+                    name = newusername + '_' + str(i) + '.jpg'
+                    cv2.imwrite(userimagefolder + '/' + name, frame[y:y + h, x:x + w])
+                    i += 1
+                j += 1
+            st.image(frame, channels="BGR")
+            if cv2.waitKey(1) == 27:
+                break
+
+        cap.release()
+        cv2.destroyAllWindows()
+
+        st.write('Training Model')
+        train_model()
+
+        st.success("Student added successfully!")
+
+if __name__ == "__main__":
+    main()
