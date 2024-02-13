@@ -1,4 +1,4 @@
-opencv-python==4.5.1.48
+opencv-python==4.7.0.72
 flask==2.2.3
 numpy==1.24.2
 scikit-learn
@@ -7,3 +7,5 @@ joblib==1.2.0
 gunicorn==19.7.1
 Werkzeug==2.2.2
 flask-cors
+face-recognition
+dlib
