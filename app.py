@@ -20,7 +20,7 @@ datetoday2 = date.today().strftime("%d-%B-%Y")
 
 # Initializing VideoCapture object to access WebCam
 face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
-cap = cv2.VideoCapture(0)
+#cap = cv2.VideoCapture(0)
 '''
 try:
     cap = cv2.VideoCapture(0)
@@ -113,7 +113,7 @@ def start():
     if 'face_recognition_model.pkl' not in os.listdir('static'):
         return render_template('index.html', totalreg=totalreg(), datetoday2=datetoday2,
                                mess='There is no trained model in the static folder. Please add a new face to continue.')
-
+    cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
 
     while ret:
@@ -160,7 +160,9 @@ def add():
     i, j = 0, 0
     while j < 500:
         _, frame = cap.read()
-        faces = extract_faces(frame)
+        #faces = extract_faces(frame)
+        faces=cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_detector.detectMultiScale(faces, 1.3, 5)
         for (x, y, w, h) in faces:
             cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 20), 2)
             cv2.putText(frame, f'Images Captured: {i}/50', (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2,
