@@ -42,20 +42,33 @@ def extract_faces(img):
 # Identify face using ML model
 def identify_face(facearray):
     model = joblib.load('static/face_recognition_model.pkl')
-    return model.predict(facearray)
+    return model.predict(facearray.reshape(1, -1))
 
 # A function which trains the model on all the faces available in faces folder
 def train_model():
     faces = []
     labels = []
     userlist = os.listdir('static/faces')
+
+    # Check if there are users with images
+    if not userlist:
+        print("No users found for training.")
+        return
+
     for user in userlist:
         for imgname in os.listdir(f'static/faces/{user}'):
             img = cv2.imread(f'static/faces/{user}/{imgname}')
             resized_face = cv2.resize(img, (50, 50))
             faces.append(resized_face.ravel())
             labels.append(user)
+
     faces = np.array(faces)
+
+    # Check if faces array is not empty
+    if faces.size == 0:
+        print("No faces found for training.")
+        return
+
     knn = KNeighborsClassifier(n_neighbors=5)
     knn.fit(faces, labels)
     joblib.dump(knn, 'static/face_recognition_model.pkl')
@@ -98,7 +111,8 @@ def main():
 def home_page():
     names, rolls, times, l = extract_attendance()
     st.write(f"## Today's Attendance ({datetoday2})")
-    st.table(pd.DataFrame({"Name": names, "Roll": rolls, "Time": times}))
+    df_home = pd.DataFrame({"Name": names, "Roll": rolls, "Time": times})
+    st.table(df_home)
 
     st.write(f"Total Registered Students: {totalreg()}")
 
@@ -109,35 +123,31 @@ def take_attendance_page():
 
     st.write("## Taking Attendance")
 
-    cap = cv2.VideoCapture(0)
-    ret, frame = cap.read()
+    img_file_buffer = st.camera_input("Take a picture")
 
-    while ret:
+    if img_file_buffer is not None:
+        bytes_data = img_file_buffer.getvalue()
+
+        # convert image from opened file to np.array
+        image_array = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+        image_array_copy = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+
         # Convert the frame to grayscale
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(image_array_copy, cv2.COLOR_BGR2GRAY)
 
         # Detect faces in the grayscale frame
         faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
 
         # Draw rectangles around the detected faces
         for (x, y, w, h) in faces:
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            face = cv2.resize(frame[y:y + h, x:x + w], (50, 50))
+            cv2.rectangle(image_array_copy, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            face = cv2.resize(image_array_copy[y:y + h, x:x + w], (50, 50))
             identified_person = identify_face(face.reshape(1, -1))[0]
             add_attendance(identified_person)
-            cv2.putText(frame, f'{identified_person}', (x + 6, y - 6), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2)
+            cv2.putText(image_array_copy, f'{identified_person}', (x + 6, y - 6), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2)
 
         # Display the resulting frame
-        st.image(frame, channels="BGR")
-
-        # Break the loop if 'q' is pressed
-        if cv2.waitKey(1) == ord('q'):
-            break
-
-        ret, frame = cap.read()
-
-    cap.release()
-    cv2.destroyAllWindows()
+        st.image(image_array_copy, channels="BGR", use_column_width=True)
 
 def add_student_page():
     st.write("## Add New Student")
@@ -150,32 +160,25 @@ def add_student_page():
         if not os.path.isdir(userimagefolder):
             os.makedirs(userimagefolder)
 
-        cap = cv2.VideoCapture(0)
-        i, j = 0, 0
-        while j < 500:
-            i, frame = cap.read()
-            faces = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = face_detector.detectMultiScale(faces, 1.3, 5)
-            for (x, y, w, h) in faces:
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 20), 2)
-                cv2.putText(frame, f'Images Captured: {i}/50', (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2,
-                            cv2.LINE_AA)
-                if j % 10 == 0:
-                    name = newusername + '_' + str(i) + '.jpg'
-                    cv2.imwrite(userimagefolder + '/' + name, frame[y:y + h, x:x + w])
-                    i += 1
-                j += 1
-            st.image(frame, channels="BGR")
-            if cv2.waitKey(1) == 27:
-                break
+        st.write("Please take 10 images for training.")
 
-        cap.release()
-        cv2.destroyAllWindows()
+        # Capture 10 images for training
+        for i in range(10):
+            img_file_buffer = st.camera_input("Take a picture", key=f"image_{i}")
+            if img_file_buffer is not None:
+                bytes_data = img_file_buffer.getvalue()
+                image_array = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+
+                # Save the captured image
+                name = newusername + '_' + str(i) + '.jpg'
+                cv2.imwrite(userimagefolder + '/' + name, image_array)
+
+                # Display the captured image
+                st.image(image_array, channels="BGR", use_column_width=True, caption=f"Image {i + 1}")
 
         st.write('Training Model')
         train_model()
 
         st.success("Student added successfully!")
-
 if __name__ == "__main__":
     main()
