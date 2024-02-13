@@ -169,9 +169,10 @@ elif selected_page == "Add New User":
             # Draw rectangles around the detected faces
             for (x, y, w, h) in faces:
                 cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 20), 2)
-                name = newusername + '_' + str(capture_count) + '.jpg'
-                img_path = os.path.join(userimagefolder, name)
-                cv2.imwrite(img_path, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                resized_face = cv2.resize(frame[y:y+h, x:x+w], (50, 50))
+                user_image = resized_face.ravel()
+                if len(user_image) > 0:
+                    faces.append(user_image)
 
                 capture_count += 1
                 st.write(f"Images Captured: {capture_count}/50")
@@ -186,11 +187,18 @@ elif selected_page == "Add New User":
         cap.release()
         cv2.destroyAllWindows()
 
-        st.success('Training Model...')
-        train_model()
-        names, rolls, times, l = extract_attendance()
-        if totalreg() > 0:
-            st.success("User added successfully!")
-            st.button("Go to Attendance", key="go_to_attendance")
+        if len(faces) > 0:
+            # Ensure that faces is a 2D array
+            faces = np.array(faces)
+            faces = faces.reshape(-1, 50 * 50 * 3)  # Assuming the image size is 50x50 with 3 channels (BGR)
+
+            st.success('Training Model...')
+            train_model()
+            names, rolls, times, l = extract_attendance()
+            if totalreg() > 0:
+                st.success("User added successfully!")
+                st.button("Go to Attendance", key="go_to_attendance")
+            else:
+                st.error("Failed to add user. Please try again.")
         else:
-            st.error("Failed to add user. Please try again.")
+            st.error("No face detected. Please try again.")
